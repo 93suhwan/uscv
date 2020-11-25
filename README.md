@@ -1,6 +1,6 @@
 # USCV : A Unified Smart Contract Validator
 
-USCV is a unified analysis platform that leverages the latest Ethereum smart contract analyzers to detect various security vulnerabilities and help the user to lint Solidity code.
+USCV is a unified analysis platform that leverages the latest Ethereum smart contract analyzers to detect various security vulnerabilities and help the users to lint Solidity code.
 
 
 USCV currently supports the following tools.
@@ -21,7 +21,7 @@ USCV currently supports the following tools.
 - Sol-profiler
 
 ## Requirements
-- Unix-based system (Recommend Ubuntu 16.04 or above)
+- Unix-based system (Ubuntu 16.04 or above)
 - Docker 18.09 or above
 
 ## Installation:
@@ -31,7 +31,8 @@ $ cd uscv
 $ ./createContainers.sh
 ```
 
-It is recommended to run as the root user. (If you import files from the Docker containers to host, they are by default under the root privilege.)
+We recommend to run as the root user. (If you import files from the Docker containers to host, they are by default under the root privilege.)
+
 ## Execution:
 ```bash
 ./execution.sh [OPTIONS]
@@ -49,7 +50,7 @@ It is recommended to run as the root user. (If you import files from the Docker 
 ```
 
 ## Examples 
-1. To detect the vulnerabilities in the ./code/test.sol file using the Security tools:
+1. To detect the vulnerabilities in the ./code/test.sol file using all the Security tools:
 ```bash
 $ sudo ./execution.sh -f ./code/test.sol -t Security
 ```
