@@ -1,16 +1,16 @@
 #!/bin/bash
-vul=("AC" "DOS" "FR" "IO" "RE" "TD" "UC")
-manti=("Delegatecall to user controlled" "False condition" "Potential race condition (transaction order dependency)" "signed integer overflow at" "Potential reentrancy vulnerability|Reentrancy multi-million ether bug" "TIMESTAMP instruction used" "Returned value at")
-mythril=("SWC ID: 105|SWC ID: 106" "SWC ID: 113" "False condition" "SWC ID: 101" "SWC ID: 107|SWC ID: 117" "SWC ID: 120|SWC ID: 116" "SWC ID: 104")
-oyente=("Parity Multisig Bug 2" "False condition" "Transaction-Ordering Dependence" "Integer Underflow|Integer Overflow" "Re-Entrancy Vulnerability" "Timestamp Dependency" "False condition")
-securify=("The address of a delegatecall " "False condition" "Transaction Order Affects" "False condition" "Reentrancy" "Usage of block timestamp" "Unused Return Pattern")
-slither=("#controlled-delegatecall" "False condition" "False condition" "False condition" "#reentrancy-vulnerabilities" "#block-timestamp" "#unchecked-low-level-calls")
-smartcheck=("SOLIDITY_VISIBILITY" "SOLIDITY_UNCHECKED_CALL" "False condition" "SOLIDITY_VAR|SOLIDITY_UINT_CANT" "False condition" "SOLIDITY_EXACT_TIME" "SOLIDITY_FUNCTION_RETURNS")
-solhint=("False condition" "False condition" "False condition" "False condition" "reentrancy" "not-rely-on-time" "False condition")
-files=("manticore.txt" "mythril.txt" "oyente.txt" "securify.txt" "slither.txt" "smartcheck.txt" "solhint.txt" "verismart.txt")
+files=( "manticore" "mythril" "oyente" "securify" "slither" "smartcheck" "solhint" "verismart" )
+vul=( "AC" "DoS" "FR" "IO" "RE" "TD" "UC" )
+manti=("Delegatecall to user controlled" "None detected" "Potential race condition (transaction order dependency)" "signed integer overflow at" "Potential reentrancy vulnerability|Reentrancy multi-million ether bug" "TIMESTAMP instruction used" "Returned value at")
+mythril=("SWC ID: 105|SWC ID: 106" "SWC ID: 113" "None detected" "SWC ID: 101" "SWC ID: 107|SWC ID: 117" "SWC ID: 120|SWC ID: 116" "SWC ID: 104")
+oyente=("Warning: Parity Multisig Bug 2" "None detected" "Warning: Transaction-Ordering Dependency" "Warning: Integer Underflow|Warning: Integer Overflow" "Warning: Re-Entrancy Vulnerability" "Warning: Timestamp Dependency" "None detected")
+securify=("The execution of ether flows should |Calls to selfdestruct that can be " "None detected" "The receiver of ether transfers |The amount of ether transferred " "None detected" "Calls into external contracts that receive |Reentrancy that involves no ether |Reentrancy is equivalent with two " "Returned value relies on block " "The value returned by an |If a single call in the loop ")
+slither=("#controlled-delegatecall" "None detected" "None detected" "None detected" "#reentrancy-vulnerabilities" "#block-timestamp" "#unchecked-low-level-calls")
+smartcheck=("SOLIDITY_TX_ORIGIN" "SOLIDITY_OVERPOWERED_ROLE" "None detected" "SOLIDITY_VAR|SOLIDITY_UINT_CANT" "None detected" "SOLIDITY_EXACT_TIME" "SOLIDITY_UNCHECKED_CALL")
+solhint=("None detected" "None detected" "None detected" "None detected" "reentrancy" "not-rely-on-time" "None detected")
+verismart=("None detected" "None detected" "None detected" "\[IO\]" "None detected" "None detected" "None detected")
+# This1
 file=()
-tools=("Manticore" "Mythril" "Oyente" "Securify" "Slither" "SmartCheck" "Solhint" "VeriSmart")
-exist=()
 
 help() {
   echo "comparison.sh [OPTION]"
@@ -27,112 +27,125 @@ do
   esac
 done
 
+writeFiles() {
+if [[ $1 == "" ]]; then
+  echo $2 >> $3/comparison.txt
+  echo $2 >> $3/TP.txt
+  echo $2 >> $3/FP.txt
+  echo $2 >> $3/FN.txt
+else
+  echo $1 $2 >> $3/comparison.txt
+  echo $1 $2 >> $3/TP.txt
+  echo $1 $2 >> $3/FP.txt
+  echo $1 $2 >> $3/FN.txt
+fi
+}
+
+checkVul() {
+  strings=$(echo $2 | tr '|' '\n')
+  results=""
+  loc=${1%/*}
+  solFile=${loc##*/}
+  countermeasure=${1##*/}
+  if [[ $countermeasure = "manticore" ]]; then
+    counter=mcore*/global.findings
+  else
+    counter=$countermeasure.txt
+  fi
+  counter=$loc/$counter
+
+  IFS=$'\n'
+  for string in $strings
+  do
+    if [[ $string = "None detected" ]]; then
+      results=$string
+    else
+      if [[ $results = "" ]]; then
+        if [ -f $counter ]; then
+          results=$(grep "$string" $counter)
+        fi
+      fi
+    fi
+  done
+
+  if [[ $results = "" ]]; then
+    result="X"
+    if [[ $1 =~ "result/data/$3" ]]; then
+      FN=1
+    fi
+  elif [[ $results = "None detected" ]]; then
+    result="-"
+  else
+    result="O"
+    if [[ $1 =~ "result/data/$3" ]]; then
+      TP=1
+    else
+      FP=1
+    fi
+  fi
+}
+
 for (( i=0; i<${#files[@]}; i++ ))
 do
-if [[ -f $dir/${files[i]} ]]; then
-  file+=("${files[i]}")
-  exist+=("${tools[i]}")
-fi
+  if [[ -f $dir/${files[i]}.txt ]]; then
+    file+=("${files[i]}")
+  fi
 done
 
+dir=${dir%\/}
 echo -ne "\t\t" > $dir/comparison.txt
+echo -ne "\t\t" > $dir/TP.txt
+echo -ne "\t\t" > $dir/FP.txt
+echo -ne "\t\t" > $dir/FN.txt
 
 for t in ${vul[@]}
 do
-  echo -ne $t"\t" >> $dir/comparison.txt
+  writeFiles "-ne" $t"\t" $dir
 done
 
-for (( i=0; i<${#exist[@]}; i++ ))
+for (( i=0; i<${#file[@]}; i++ ))
 do
-  echo -ne "\n""${exist[$i]}""\t" >> $dir/comparison.txt
+  writeFiles "-ne" "\r\n${file[$i]^}\t" $dir
   for (( j=0; j<${#vul[@]}; j++ ))
   do
-    if [[ ${vul[$j]} = "AC" && ( ${file[$i]} = "mythril.txt" || ${file[$i]} = "oyente.txt" || ${file[$i]} = "slither.txt" || ${file[$i]} = "solhint.txt" ) ]]; then
-      echo -ne "\t" >> $dir/comparison.txt
+    result=""
+    TP=0
+    FP=0
+    FN=0
+    if [[ ${vul[$j]} = "AC" && ( ${#file[$i]} -lt 8 ) ]]; then
+      writeFiles "-ne" "\t" $dir
     fi
-    if [[ ${file[$i]} = "manticore.txt" ]]; then
-      if [[ ${manti[$j]} = "False condition" ]]; then
-        result="False condition"
-      elif [[ ${manti[$j]} =~ "|" ]]; then
-        result=$(grep "${manti[$j]%%|*}" $dir/${file[$i]})
-        if [[ $result = "" ]]; then
-          result=$(grep "${manti[$j]##*|}" $dir/${file[$i]})
-        fi
-      else
-        result=$(grep "${manti[$j]}" $dir/${file[$i]})
-      fi
-    elif [[ ${file[$i]} = "mythril.txt" ]]; then
-      if [[ ${mythril[$j]} = "False condition" ]]; then
-        result="False condition"
-      elif [[ ${mythril[$j]} =~ "|" ]]; then
-        result=$(grep "${mythril[$j]%%|*}" $dir/${file[$i]})
-        if [[ $result = "" ]]; then
-          result=$(grep "${mythril[$j]##*|}" $dir/${file[$i]})
-        fi
-      else
-        result=$(grep "${mythril[$j]}" $dir/${file[$i]})
-      fi
-    elif [[ ${file[$i]} = "oyente.txt" ]]; then
-      if [[ ${oyente[$j]} = "False condition" ]]; then
-        result="False condition"
-      elif [[ ${oyente[$j]} =~ "|" ]]; then
-        result=$(grep "${oyente[$j]%%|*}" $dir/${file[$i]})
-        if [[ $result = "" ]]; then
-          result=$(grep "${oyente[$j]##*|}" $dir/${file[$i]})
-        fi
-      else
-        result=$(grep "${oyente[$j]}" $dir/${file[$i]} | grep "True")
-      fi
-    elif [[ ${file[$i]} = "securify.txt" ]]; then
-      if [[ ${securify[$j]} = "False condition" ]]; then
-        result="False condition"
-      else
-        result=$(grep "${securify[$j]}" $dir/${file[$i]})
-      fi
-    elif [[ ${file[$i]} = "slither.txt" ]]; then
-      if [[ ${slither[$j]} = "False condition" ]]; then
-        result="False condition"
-      else
-        result=$(grep "${slither[$j]}" $dir/${file[$i]})
-      fi
-    elif [[ ${file[$i]} = "smartcheck.txt" ]]; then
-      if [[ ${smartcheck[$j]} = "False condition" ]]; then
-        result="False condition"
-      elif [[ ${smartcheck[$j]} =~ "|" ]]; then
-        result=$(grep "${smartcheck[$j]%%|*}" $dir/${file[$i]})
-        if [[ $result = "" ]]; then
-          result=$(grep "${smartcheck[$j]##*|}" $dir/${file[$i]})
-        fi
-      else
-        result=$(grep "${smartcheck[$j]}" $dir/${file[$i]})
-      fi
-    elif [[ ${file[$i]} = "solhint.txt" ]]; then
-      if [[ ${solhint[$j]} = "False condition" ]]; then
-        result="False condition"
-      else
-        result=$(grep "${solhint[$j]}" $dir/${file[$i]})
-      fi
-    elif [[ ${file[$i]} = "verismart.txt" ]]; then
-      if [[ ${vul[$j]} = "IO" ]]; then
-        result=$(grep -A1 "Queries" $dir/${file[$i]} | tr -d '\015' | tail -1 | cut -d ':' -f2 | bc)
-        if [[ $result > 0 ]]; then
-          result="True"
-        else
-          result=''
-        fi
-      else
-        result="False condition"
-      fi
+
+    if [[ ${file[$i]} = "manticore" ]]; then
+      checkVul "$dir/${files[i]}" "${manti[j]}" ${vul[$j]}
+    elif [[ ${file[$i]} = "mythril" ]]; then
+      checkVul "$dir/${files[i]}" "${mythril[j]}" ${vul[$j]}
+    elif [[ ${file[$i]} = "oyente" ]]; then
+      checkVul "$dir/${files[i]}" "${oyente[j]}" ${vul[$j]}
+    elif [[ ${file[$i]} = "securify" ]]; then
+      checkVul "$dir/${files[i]}" "${securify[j]}" ${vul[$j]}
+    elif [[ ${file[$i]} = "slither" ]]; then
+      checkVul "$dir/${files[i]}" "${slither[j]}" ${vul[$j]}
+    elif [[ ${file[$i]} = "smartcheck" ]]; then
+      checkVul "$dir/${files[i]}" "${smartcheck[j]}" ${vul[$j]}
+    elif [[ ${file[$i]} = "solhint" ]]; then
+      checkVul "$dir/${files[i]}" "${solhint[j]}" ${vul[$j]}
+    elif [[ ${file[$i]} = "verismart" ]]; then
+      checkVul "$dir/${files[i]}" "${verismart[j]}" ${vul[$j]}
+    # This2
     fi
-    if [[ $result = "False condition" ]]; then
-      echo -e "-\t\c" >> $dir/comparison.txt
-    elif [[ $result = '' ]]; then
-      echo -e "X\t\c" >> $dir/comparison.txt
-    else
-      echo -e "O\t\c" >> $dir/comparison.txt
+    echo -e $result"\t\c" >> $dir/comparison.txt
+    if [[ $result = "-" ]]; then
+      echo -e "-\t\c" >> $dir/TP.txt
+      echo -e "-\t\c" >> $dir/FP.txt
+      echo -e "-\t\c" >> $dir/FN.txt
+    else 
+      echo -e $TP"\t\c" >> $dir/TP.txt
+      echo -e $FP"\t\c" >> $dir/FP.txt
+      echo -e $FN"\t\c" >> $dir/FN.txt
     fi
   done
 done
 
-echo -e "\n${dir}/\c" >> $dir/comparison.txt
-echo $(ls $dir | grep \.sol) >> $dir/comparison.txt 
+writeFiles "-ne" "\r\n${dir}/" $dir
+writeFiles "" $(ls $dir | grep \.sol) $dir

@@ -2,19 +2,17 @@
 
 help() {
   echo "testing.sh [OPTIONS]"
-  echo "           -t <string>  Used to specify a tool name."
+  echo "           -t <string>  Used to specify the countermeasure's name."
   echo "                        echidna | ethlint | manticore | mythril | oyente | securify"
   echo "                        slither | smartcheck | solhint | sol-profiler | verismart"
-  echo "                        Security | Testing | All"
-  echo "           -f <strihg>  Used to specify a source file to be tested."
-  echo "           -l <int>     Used to specify timeout value(1, 30, 60, 3600, ...)."
-  echo "           -o \"string\"  Used to specify the options that the tool uniquely supports."
+  echo "                        Vul | Aux | All | Name of being added countermeasure."
+  echo "           -f <strihg>  Used to specify the target code to be tested."
+  echo "           -l <int>     Used to specify timeout value (1, 30, 60, 3600, ...)."
+  echo "           -o \"string\"  Used to specify the options that each countermeasure uniquely supports."
   exit 0
 }
 
-options="empty"
-
-while getopts "f:o:s:t:l:h" opt
+while getopts "f:s:t:o:l:h" opt
 do
   case $opt in
     f) file=$OPTARG;;
@@ -49,69 +47,49 @@ docker run -it --rm -v $(pwd)/.solc:/root/.solc solc cp /root/.solcx/solc-v$solc
 
 start=`date +%s.%N`
 
+timeout1=$(bc <<< "$timeout / 10 * 9")
+timeout2=$(bc <<< "$timeout / 10")
+
 filename=${file##*/}
 
-if [[ $tool = "mythril" ]]; then
-  if [[ $options = "empty" ]]; then
-    timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/$file:/root/$filename $tool analyze $filename --solv $solc 
-  else
-    docker run -it --rm -v $(pwd)/$file:/root/$filename $tool analyze $filename --solv $solc $options
-  fi
+if [[ $options = "empty" ]]; then
+options=""
+fi
+
+if [[ $tool = "??" ]]; then
+  help
+# This
+elif [[ $tool = "mythril" ]]; then
+  timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/$file:/root/$filename $tool analyze $filename --solv $solc $options
 elif [[ $tool = "oyente" ]]; then
-  if [[ $options = "empty" ]]; then
-    timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -s $filename
-  else
-    docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -s $filename $options
-  fi
+  timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -s $filename $options
 elif [[ $tool = "manticore" ]]; then
-  if [[ $options = "empty" ]]; then
-    timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/manticore:/root -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool $filename
-  else
-    docker run -it --rm -v $(pwd)/manticore:/root -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool $filename
-  fi
+  timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/result/${file%.sol}:/root -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool $filename --core.time $timeout1 --smt.timeout $timeout2 $options
+  sudo chmod 755 result/${file%.sol}/mcore*
 elif [ $tool = "slither" -o $tool = "sol-profiler" -o $tool = "solhint" ]; then
-  if [[ $options = "empty" ]]; then
-    timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool $filename
-  else
-    docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool $filename $options
-  fi
+  timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool $filename $options
 elif [[ $tool = "securify" ]]; then
-  if [[ $options = "empty" ]]; then
-    timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/sec/$filename $tool $filename
-  else
-    docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/sec/$filename $tool $filename $options
-  fi
+  timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/sec/$filename $tool $filename $options
 elif [[ $tool = "ethlint" ]]; then
-  if [[ $options = "empty" ]]; then
-    timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -f $filename
-  else
-    docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -f $filename $options
-  fi
+  timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -f $filename $options
 elif [[ $tool = "smartcheck" ]]; then
-  if [[ $options = "empty" ]]; then
-    timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -p $filename
-  else
-    docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -p $filename $options
-  fi
+  timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool -p $filename $options
 elif [[ $tool = "verismart" ]]; then
-  time1=$(bc <<< "$timeout / 10 * 9")
-  time2=$(bc <<< "$timeout / 10")
-  if [[ $options = "empty" ]]; then
-    docker run -it --rm  -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/VeriSmart-public/$filename $tool -input $filename -verify_timeout $time1 -z3timeout $time2
-  else
-    docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/VeriSmart-public/$filename $tool -input $filename
-  fi
+  timelimit -s 9 -t $timeout docker run -it --rm -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/VeriSmart-public/$filename $tool -input $filename -verify_timeout $timeout1 -z3timeout $timeout2 $options
 elif [[ $tool = "echidna" ]]; then
-  if [[ $options = "empty" ]]; then
-    timelimit -s 9 -t $timeout docker run -it --rm -e PATH="$PATH:/root/.local/bin" -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool echidna-test $filename
-  else
-    docker run -it --rm -e PATH="$PATH:/root/.solc:/root/.local/bin" -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool echidna-test $filename $options
-  fi
+  timelimit -s 9 -t $timeout docker run -it --rm -e PATH="$PATH:/root/.local/bin" -v $(pwd)/.solc/solc:/usr/bin/solc -v $(pwd)/$file:/root/$filename $tool echidna-test $filename $options
 else
   echo "You typed $tool. Please type right tool name"
   help
 fi
+
 end=`date +%s.%N`
+
 runtime=$( echo "$end - $start" | bc -l )
 echo "It took $runtime times."
+
 sh -c 'docker rm -f $(docker ps -aq)' > /dev/null 2>&1
+
+if [[ $tool = "oyente" ]]; then
+  sed -i '/.*Attack Vulnerability:.*$/N;s/\n//' ./result/${file%.sol}/oyente.txt
+fi

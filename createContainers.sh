@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# This
 docker build -t ethlint dockerfiles/ethlint
 docker build -t manticore dockerfiles/manticore
 docker build -t mythril dockerfiles/mythril
