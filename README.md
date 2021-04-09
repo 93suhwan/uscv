@@ -23,6 +23,7 @@ USCV currently supports the following tools.
 ## Requirements
 - Unix-based system (Ubuntu 16.04 or above)
 - Docker 18.09 or above
+- Python 3.5 or above
 
 ## Installation:
 ```bash
@@ -41,7 +42,7 @@ We recommend to run as the root user. (If you import files from the Docker conta
                -t <string>  Used to specify the tool.
                             echidna | ethlint | manticore | mythril | oyente | securify
                             slither | smartcheck | solhint | sol-profiler | verismart
-                            Security | Testing | All
+                            Security | Testing | All | Name of being added countermeasure.
                -v <string>  Used to specify a type of vulnerability.
                             AC | DOS | FR | IO | RE | TD | UC
                -r           Used to apply only the effective tool set (proposed)
