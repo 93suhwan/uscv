@@ -12,10 +12,10 @@ for line in lines:
   if(items[0] == 'vul=('):
     for item in items[1:-1]:
       vuls.append(item.replace('\"', ''))
+    break
   elif(items[0] == 'countermeasure=('):
     for item in items[1:-1]:
       countermeasures.append(item.replace('\"', ''))
-    break
 
 TP = pd.read_csv("./result/data/TP.txt", delimiter='\t+', engine='python')
 FP = pd.read_csv("./result/data/FP.txt", delimiter='\t+', engine='python')
@@ -43,7 +43,7 @@ PRECISION = np.nan_to_num((TP / (TP + FP)) * 100)
 RECALL = np.nan_to_num((TP / vulTotal) * 100)
 ACC = np.nan_to_num(((TP + TN) / totalNum) * 100)
 F1 = np.nan_to_num((2 * (RECALL * PRECISION) / (RECALL + PRECISION)))
-exit()
+
 conditions=conditions.T
 TP=np.nan_to_num(TP.T)
 FP=np.nan_to_num(FP.T)
@@ -53,7 +53,6 @@ F1=F1.T
 
 N = np.arange(len(vuls))
 
-# Except SAFE data
 for i in range(len(vuls) - 1):
   fig = plt.figure(figsize=(5, 5))
   ax = fig.add_subplot(111)
@@ -104,11 +103,11 @@ for vul in range(len(vuls) - 1):
 
   for countermeasure in range(len(countermeasures)):
     rocvis(Y[vul][countermeasure], P[vul][countermeasure], countermeasures[countermeasure], conditions[vul][countermeasure])
+  plt.rcParams["font.weight"] = "bold"
   plt.legend(fontsize=20, loc="lower right")
   plt.xticks(fontsize=25, fontweight="bold")
   plt.yticks(fontsize=25, fontweight="bold")
   plt.xlabel("1 - Specificity", fontsize=25, fontweight="bold")
   plt.ylabel("Sensitivity", fontsize=25, fontweight="bold")
-  plt.rcParams["font.weight"] = "bold"
   plt.title("ROC Curve for " + vuls[vul], fontsize=25, fontweight="bold")
   plt.savefig("result/data/Roc_curve_" + vuls[vul], dpi=600)
