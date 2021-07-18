@@ -1,0 +1,1 @@
+# SAFE solidity code
